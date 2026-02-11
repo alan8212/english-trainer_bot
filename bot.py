@@ -128,32 +128,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("抱歉，出了點問題... 請再試一次！")
 
 # ---------------- Webhook Setup ----------------
+# ---------------- Telegram Handlers ----------------
+# ... (前面的 start, clear, show_history, handle_message 保持不變) ...
+
 def main():
+    # 1. 建立 Application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
+    # 2. 註冊處理器
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("clear", clear))
     application.add_handler(CommandHandler("history", show_history))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Railway 給的 PORT 環境變數（預設 8080）
-    port = int(os.environ.get("PORT", 8080))
-
-    # Webhook 路徑（Railway 會給 https://your-app.up.railway.app/）
-    # 注意：最後要加上你的 token 作為 path 的一部分（安全）
-    webhook_path = f"/{TELEGRAM_TOKEN}"
-
-    # 設定 webhook（部署後再執行一次 set_webhook）
-    # 你可以先本地跑 polling 測試，部署後再設 webhook
-    # application.run_polling()  # ← 開發時用這個，本地測試
-
-    # 部署時用 webhook
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=webhook_path,
-        webhook_url=f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'your-app.up.railway.app')}{webhook_path}",
-    )
+    # 3. 啟動機器人 (Polling 模式)
+    logger.info("機器人已啟動 (Polling)...")
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
