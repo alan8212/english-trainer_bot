@@ -130,7 +130,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------- Webhook Setup ----------------
 # ---------------- Telegram Handlers ----------------
 # ... (前面的 start, clear, show_history, handle_message 保持不變) ...
-
+'''
 def main():
     # 1. 建立 Application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -144,6 +144,44 @@ def main():
     # 3. 啟動機器人 (Polling 模式)
     logger.info("機器人已啟動 (Polling)...")
     application.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    main()
+'''
+# ---------------- Webhook Setup ----------------
+def main():
+    # 1. 建立 Application
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+
+    # 2. 註冊處理器
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("clear", clear))
+    application.add_handler(CommandHandler("history", show_history))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # 3. 取得 Railway 環境變數
+    # Railway 會自動給予 PORT，預設通常是 8080
+    PORT = int(os.environ.get("PORT", 8080))
+    
+    # 取得 Railway 分配給你的公網網址 (例如: your-bot.up.railway.app)
+    # 如果你在 Railway 沒看到這個變數，請手動在 Railway 介面設定一個自定義域名或檢查 Public Domain
+    DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+
+    if DOMAIN:
+        logger.info(f"啟動 Webhook 模式，監聽 Port: {PORT}, Domain: {DOMAIN}")
+        
+        # 啟動 Webhook
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TELEGRAM_TOKEN,       # Webhook 的後綴，用 token 增加安全性
+            webhook_url=f"https://{DOMAIN}/{TELEGRAM_TOKEN}",
+            allowed_updates=Update.ALL_TYPES
+        )
+    else:
+        # 如果沒偵測到網址，自動退回 Polling 模式 (方便本地測試)
+        logger.warning("未偵測到 RAILWAY_PUBLIC_DOMAIN，改用 Polling 模式...")
+        application.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
